@@ -34,7 +34,7 @@ exports.handler = async (event) => {
 
     archive.pipe(output);
     const sourceFolder = path.join(__dirname, '../../Storage/session');
-    archive.directory(sourceFolder, false);
+    archive.directory(sourceFolder, true);
 
     await archive.finalize();
 
