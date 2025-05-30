@@ -5,8 +5,16 @@ import path from 'path';
 import archiver from 'archiver';
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
+  const method = req.method;
+  
+  const phone = method === 'POST' ? req.body.phone : req.query.phone;
+  if (!phone) return res.status(400).json({ message: 'Nomor tidak boleh kosong' });
 
+  // hanya izinkan GET dan POST
+  if (method !== 'POST' && method !== 'GET') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+  
   const { phone } = req.query;
   if (!phone) return res.status(400).json({ message: 'Nomor tidak boleh kosong' });
 
