@@ -7,6 +7,8 @@ const {
 
 const pino = require('pino');
 const NodeCache = require('node-cache');
+const path = require('path');
+const fs = require('fs');
 
 async function connectWithPairing(phoneNumber) {
 const sessionDir = path.join(__dirname, '../Storage/session');
