@@ -10,11 +10,7 @@ export default function Home() {
     setMessage('Sedang memproses...');
     setDownloadUrl('');
 
-    const res = await fetch('/api/connect', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone }),
-    });
+    const res = await fetch(`/api/connect?phone=${encodeURIComponent(phone)}`);
 
     const data = await res.json();
     setMessage(data.message);
