@@ -9,7 +9,13 @@ const pino = require('pino');
 const NodeCache = require('node-cache');
 
 async function connectWithPairing(phoneNumber) {
-  const { state, saveCreds } = await useMultiFileAuthState('Storage/session');
+const sessionDir = path.join(__dirname, '../Storage/session');
+
+if (!fs.existsSync(sessionDir)) {
+  fs.mkdirSync(sessionDir, { recursive: true });
+}
+
+const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
   const { version } = await fetchLatestBaileysVersion();
   const sock = makeWASocket({
     version,
