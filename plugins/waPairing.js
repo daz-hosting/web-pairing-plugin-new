@@ -11,13 +11,13 @@ const path = require('path');
 const fs = require('fs');
 
 async function connectWithPairing(phoneNumber) {
-const sessionDir = path.join(__dirname, '../Storage/session');
+const sessionDir = path.join(os.tmpdir(), 'session');
 
-if (!fs.existsSync(sessionDir)) {
-  fs.mkdirSync(sessionDir, { recursive: true });
-}
+  if (!fs.existsSync(sessionDir)) {
+    fs.mkdirSync(sessionDir, { recursive: true });
+  }
 
-const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+  const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
   const { version } = await fetchLatestBaileysVersion();
   const sock = makeWASocket({
     version,
