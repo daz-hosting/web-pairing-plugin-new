@@ -6,16 +6,11 @@ import archiver from 'archiver';
 
 export default async function handler(req, res) {
   const method = req.method;
-  
-  const phone = method === 'POST' ? req.body.phone : req.query.phone;
-  if (!phone) return res.status(400).json({ message: 'Nomor tidak boleh kosong' });
-
-  // hanya izinkan GET dan POST
   if (method !== 'POST' && method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
-  
-  const { phone } = req.query;
+
+  const phone = method === 'POST' ? req.body.phone : req.query.phone;
   if (!phone) return res.status(400).json({ message: 'Nomor tidak boleh kosong' });
 
   const sessionId = `session-${Date.now()}`;
@@ -32,11 +27,14 @@ export default async function handler(req, res) {
     version,
   });
 
-  try {
-    if (!sock.authState.creds.registered) {
-      const pairingCode = await sock.requestPairingCode(phone);
-      await new Promise(resolve => setTimeout(resolve, 10000)); // beri waktu untuk user pairing
+  sock.ev.on("creds.update", saveCreds);
 
+  let resEnded = false;
+
+  sock.ev.on("connection.update", async (update) => {
+    const { connection } = update;
+
+    if (connection === 'open' && !resEnded) {
       const zipName = `${sessionId}.zip`;
       const zipPath = path.join(process.cwd(), 'downloads', zipName);
       const output = fs.createWriteStream(zipPath);
@@ -46,15 +44,32 @@ export default async function handler(req, res) {
       archive.directory(sessionPath, false);
       await archive.finalize();
 
+      resEnded = true;
       return res.status(200).json({
-        message: `Kode Pairing: ${pairingCode}`,
-        downloadUrl: `/api/download?file=${zipName}`
+        message: '✅ WhatsApp berhasil terhubung!',
+        downloadUrl: `/api/download?file=${zipName}`,
+      });
+    }
+  });
+
+  try {
+    if (!sock.authState.creds.registered) {
+      const pairingCode = await sock.requestPairingCode(phone);
+      console.log('📲 Pairing code:', pairingCode);
+
+      // Kirim pairing code dulu ke frontend, user akan tunggu koneksi terbuka
+      return res.status(200).json({
+        message: `📲 Kode Pairing: ${pairingCode}\nSilakan masukkan di WhatsApp.`,
+        pairingCode,
       });
     } else {
       return res.status(400).json({ message: 'Nomor sudah terhubung' });
     }
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Gagal melakukan pairing', error: error.message });
+    if (!resEnded) {
+      resEnded = true;
+      return res.status(500).json({ message: '❌ Gagal melakukan pairing', error: error.message });
+    }
   }
 }
