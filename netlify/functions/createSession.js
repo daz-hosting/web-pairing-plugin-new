@@ -33,7 +33,7 @@ exports.handler = async (event) => {
     const archive = archiver('zip', { zlib: { level: 9 } });
 
     archive.pipe(output);
-    archive.directory('Storage/session/', false);
+    archive.directory('../../Storage/session/', false);
     await archive.finalize();
 
     const urls = { catboxURL: '', supaURL: '', pixhostURL: '' };
