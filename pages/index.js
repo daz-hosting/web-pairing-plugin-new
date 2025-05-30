@@ -4,6 +4,7 @@ export default function Home() {
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [downloadUrl, setDownloadUrl] = useState('');
+  const [sessionId, setSessionId] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -11,10 +12,25 @@ export default function Home() {
     setDownloadUrl('');
 
     const res = await fetch(`/api/connect?phone=${encodeURIComponent(phone)}`);
-
     const data = await res.json();
+
     setMessage(data.message);
-    if (data.downloadUrl) setDownloadUrl(data.downloadUrl);
+    if (data.sessionId) {
+      setSessionId(data.sessionId);
+      pollStatus(data.sessionId);
+    }
+  };
+
+  const pollStatus = (session) => {
+    const interval = setInterval(async () => {
+      const res = await fetch(`/api/status?session=${session}`);
+      const data = await res.json();
+      if (data.connected && data.downloadUrl) {
+        clearInterval(interval);
+        setMessage('✅ Terhubung! Klik tombol untuk mengunduh session.');
+        setDownloadUrl(data.downloadUrl);
+      }
+    }, 5000);
   };
 
   return (
@@ -39,4 +55,3 @@ export default function Home() {
     </div>
   );
             }
-            
