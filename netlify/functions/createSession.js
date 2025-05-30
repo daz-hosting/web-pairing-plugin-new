@@ -27,15 +27,26 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify(result) };
     }
 
-    // ZIP folder Storage/session
+    
+    // ZIP folder session dari /tmp/session
     const zipPath = path.join(os.tmpdir(), `session-${Date.now()}.zip`);
     const output = fs.createWriteStream(zipPath);
     const archive = archiver('zip', { zlib: { level: 9 } });
 
     archive.pipe(output);
-    const sourceFolder = path.join(__dirname, '../../Storage/session');
-    archive.directory(sourceFolder, true);
+    const sourceFolder = path.join(os.tmpdir(), 'session');
 
+    if (!fs.existsSync(sourceFolder)) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({
+          status: 'error',
+          message: 'Session folder not found: ' + sourceFolder
+        })
+      };
+    }
+
+    archive.directory(sourceFolder, true);
     await archive.finalize();
 
     const urls = { catboxURL: '', supaURL: '', pixhostURL: '' };
