@@ -2,15 +2,9 @@ import { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } from '
 import pino from 'pino';
 import fs from 'fs';
 import path from 'path';
-import archiver from 'archiver';
 
 export default async function handler(req, res) {
-  const method = req.method;
-  if (method !== 'POST' && method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
-
-  const phone = method === 'POST' ? req.body.phone : req.query.phone;
+  const phone = req.query.phone;
   if (!phone) return res.status(400).json({ message: 'Nomor tidak boleh kosong' });
 
   const sessionId = `session-${Date.now()}`;
@@ -27,49 +21,28 @@ export default async function handler(req, res) {
     version,
   });
 
-  sock.ev.on("creds.update", saveCreds);
-
-  let resEnded = false;
-
-  sock.ev.on("connection.update", async (update) => {
-    const { connection } = update;
-
-    if (connection === 'open' && !resEnded) {
-      const zipName = `${sessionId}.zip`;
-      const zipPath = path.join(process.cwd(), 'downloads', zipName);
-      const output = fs.createWriteStream(zipPath);
-      const archive = archiver('zip', { zlib: { level: 9 } });
-
-      archive.pipe(output);
-      archive.directory(sessionPath, false);
-      await archive.finalize();
-
-      resEnded = true;
-      return res.status(200).json({
-        message: '✅ WhatsApp berhasil terhubung!',
-        downloadUrl: `/api/download?file=${zipName}`,
-      });
-    }
-  });
+  sock.ev.on('creds.update', saveCreds);
 
   try {
-    if (!sock.authState.creds.registered) {
-      const pairingCode = await sock.requestPairingCode(phone);
-      console.log('📲 Pairing code:', pairingCode);
+    const pairingCode = await sock.requestPairingCode(phone);
 
-      // Kirim pairing code dulu ke frontend, user akan tunggu koneksi terbuka
-      return res.status(200).json({
-        message: `📲 Kode Pairing: ${pairingCode}\nSilakan masukkan di WhatsApp.`,
-        pairingCode,
-      });
-    } else {
-      return res.status(400).json({ message: 'Nomor sudah terhubung' });
-    }
-  } catch (error) {
-    console.error(error);
-    if (!resEnded) {
-      resEnded = true;
-      return res.status(500).json({ message: '❌ Gagal melakukan pairing', error: error.message });
-    }
+    // Simpan pairingCode & sessionId di memori (atau bisa juga Redis/Mongo untuk production)
+    global.sessions = global.sessions || {};
+    global.sessions[sessionId] = { pairingCode, connected: false };
+
+    // Listen untuk status connect
+    sock.ev.on('connection.update', async ({ connection }) => {
+      if (connection === 'open') {
+        global.sessions[sessionId].connected = true;
+      }
+    });
+
+    return res.status(200).json({
+      message: `📲 Kode Pairing: ${pairingCode}\nSilakan masukkan di WhatsApp.`,
+      pairingCode,
+      sessionId,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Gagal pairing', error: err.message });
   }
 }
