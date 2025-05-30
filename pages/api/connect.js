@@ -5,9 +5,9 @@ import path from 'path';
 import archiver from 'archiver';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ message: 'Method not allowed' });
+  if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
 
-  const { phone } = req.body;
+  const { phone } = req.query;
   if (!phone) return res.status(400).json({ message: 'Nomor tidak boleh kosong' });
 
   const sessionId = `session-${Date.now()}`;
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
   try {
     if (!sock.authState.creds.registered) {
       const pairingCode = await sock.requestPairingCode(phone);
-      await new Promise(resolve => setTimeout(resolve, 10000));
+      await new Promise(resolve => setTimeout(resolve, 10000)); // beri waktu untuk user pairing
 
       const zipName = `${sessionId}.zip`;
       const zipPath = path.join(process.cwd(), 'downloads', zipName);
