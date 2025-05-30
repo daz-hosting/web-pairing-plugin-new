@@ -7,6 +7,7 @@ const {
 
 const pino = require('pino');
 const NodeCache = require('node-cache');
+const os = require('os');
 const path = require('path');
 const fs = require('fs');
 
